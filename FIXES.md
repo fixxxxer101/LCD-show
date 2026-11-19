@@ -63,10 +63,25 @@ GPIO17): the `drm` override switches the panel's compatible to
 the kernel's ILI9486 **DRM** driver instead of fbtft. Without `drm`
 the overlay behaves exactly as before.
 
-Result: HDMI is DRM output 1 at native resolution, the panel is DRM
-output 2 (SPI) at 480×320, labwc presents both, and Pi Connect
-screen sharing works. Plug HDMI in at any time. Mirror vs extend is
-a Screen Configuration setting, not an installer decision.
+Result: HDMI is DRM output 1, the panel is DRM output 2 (SPI) at
+480×320, labwc presents both, and Pi Connect screen sharing works.
+Plug HDMI in at any time.
+
+**Mirrored by default.** Two DRM outputs with no layout config give
+an *extended* desktop (panel left, HDMI right) — and Pi Connect then
+captures only part of the layout. The legacy design was mirrored
+(one desktop everywhere), so the installer also writes a **kanshi
+profile** (`usr/mhs35-kanshi-mirror.conf` →
+`~/.config/kanshi/config`, existing config backed up): every output
+at position 0,0 in the same 480×320 landscape mode, so the panel,
+HDMI and Pi Connect all show the same complete desktop. kanshi
+matches the first profile whose output count equals the number of
+connected displays, hence one profile per case (panel only, +HDMI-1,
++HDMI-2, +both). Trade-off: the shared desktop is 480×320, so an
+HDMI monitor shows the panel-resolution image scaled up. Already
+installed and just want the mirror? Run `./MHS35-mirror.sh` as your
+user — no reinstall, no reboot. Delete the kanshi config (or
+restore its `config.bak-*`) to go back to an extended desktop.
 
 **`system_config.sh`:** the forced `B2` / `W1` lines are removed
 (see the comment there). A display installer should not silently
@@ -91,6 +106,12 @@ ls /sys/class/drm        # card*-HDMI-* and card*-SPI-*
 echo $XDG_SESSION_TYPE   # in the desktop terminal: wayland
 rpi-connect status       # screen sharing available
 ```
+
+## Hardware test log
+
+- 2026-11-19 (Clint's Pi): DRM installer verified working — panel +
+  HDMI live, Pi Connect screen sharing back. Default layout was
+  extended (left/right); mirrored profile added in response.
 
 ## Still to confirm on real hardware
 

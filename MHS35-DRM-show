@@ -18,8 +18,10 @@
 #
 # Usage: sudo ./MHS35-DRM-show [0|90|180|270]   (default rotation 90)
 # The panel keeps working after reboot; HDMI can be plugged in at
-# any time. To mirror instead of extend, use the Raspberry Pi
-# Screen Configuration tool and set the two outputs to overlap.
+# any time. The desktop is MIRRORED by default (see the kanshi
+# section below): panel, HDMI and Pi Connect all show the same
+# 480x320 landscape desktop. Run ./MHS35-mirror.sh (as your user)
+# to re-apply mirroring without reinstalling.
 
 set -u
 
@@ -133,12 +135,32 @@ else
   echo "      (Advanced Options -> Wayland) for Pi Connect screen sharing."
 fi
 
+# --- mirror the outputs (kanshi profile for the desktop user) ---
+# Two DRM outputs default to an extended desktop (panel left, HDMI
+# right), and Pi Connect then only captures part of the layout.
+# kanshi is the display daemon Raspberry Pi OS already runs; this
+# profile puts every output at position 0,0 in the same 480x320
+# landscape mode, so all screens — and Pi Connect — show the same
+# complete desktop. Any existing kanshi config is backed up.
+if [ -n "$USERNAME" ] && [ -d "/home/$USERNAME" ]; then
+  KDIR="/home/$USERNAME/.config/kanshi"
+  mkdir -p "$KDIR"
+  if [ -f "$KDIR/config" ]; then
+    cp -a "$KDIR/config" "$KDIR/config.bak-$STAMP"
+    echo "backed up existing kanshi config -> $KDIR/config.bak-$STAMP"
+  fi
+  cp -f ./usr/mhs35-kanshi-mirror.conf "$KDIR/config"
+  chown -R "$USERNAME:$(id -gn "$USERNAME" 2>/dev/null || echo "$USERNAME")" \
+    "/home/$USERNAME/.config"
+  echo "installed mirrored-desktop profile for $USERNAME"
+fi
+
 touch ./.have_installed
 echo "gpio:drm:mhs35:$ROTATE:480:320" > ./.have_installed
 
 sync
 sync
-echo "MHS35 (DRM) installed: panel + HDMI are separate DRM outputs."
+echo "MHS35 (DRM) installed: panel + HDMI mirrored to one desktop."
 echo "After reboot, verify with:  kmsprint   and   ls /sys/class/drm"
 echo "Touch note: if the pointer axes are swapped under Wayland, add"
 echo "  swapxy to the dtoverlay line in $CFG and reboot."
