@@ -1,4 +1,9 @@
 #!/bin/bash
+# SUPERSEDED 2026-11-19: mirroring was tested on hardware and
+# replaced by the extended layout in MHS35-desktop-setup.sh
+# (HDMI main, panel secondary, Connect via a virtual output).
+# Kept for history; do not use on new installs.
+#
 # MHS35-mirror.sh — switch an MHS35-DRM-show install to a mirrored
 # desktop: panel, HDMI and Pi Connect all show the same 480x320
 # landscape desktop instead of an extended left/right layout.

@@ -18,10 +18,11 @@
 #
 # Usage: sudo ./MHS35-DRM-show [0|90|180|270]   (default rotation 90)
 # The panel keeps working after reboot; HDMI can be plugged in at
-# any time. The desktop is MIRRORED by default (see the kanshi
-# section below): panel, HDMI and Pi Connect all show the same
-# 480x320 landscape desktop. Run ./MHS35-mirror.sh (as your user)
-# to re-apply mirroring without reinstalling.
+# any time. After the reboot, run ./MHS35-desktop-setup.sh as your
+# user: it installs the desktop arrangement verified on hardware
+# (HDMI = main display, panel = rotated secondary, taskbar on the
+# big screen, and a virtual output so Pi Connect shows both
+# screens side by side). See FIXES.md for the details.
 
 set -u
 
@@ -135,32 +136,20 @@ else
   echo "      (Advanced Options -> Wayland) for Pi Connect screen sharing."
 fi
 
-# --- mirror the outputs (kanshi profile for the desktop user) ---
-# Two DRM outputs default to an extended desktop (panel left, HDMI
-# right), and Pi Connect then only captures part of the layout.
-# kanshi is the display daemon Raspberry Pi OS already runs; this
-# profile puts every output at position 0,0 in the same 480x320
-# landscape mode, so all screens — and Pi Connect — show the same
-# complete desktop. Any existing kanshi config is backed up.
-if [ -n "$USERNAME" ] && [ -d "/home/$USERNAME" ]; then
-  KDIR="/home/$USERNAME/.config/kanshi"
-  mkdir -p "$KDIR"
-  if [ -f "$KDIR/config" ]; then
-    cp -a "$KDIR/config" "$KDIR/config.bak-$STAMP"
-    echo "backed up existing kanshi config -> $KDIR/config.bak-$STAMP"
-  fi
-  cp -f ./usr/mhs35-kanshi-mirror.conf "$KDIR/config"
-  chown -R "$USERNAME:$(id -gn "$USERNAME" 2>/dev/null || echo "$USERNAME")" \
-    "/home/$USERNAME/.config"
-  echo "installed mirrored-desktop profile for $USERNAME"
-fi
+# Desktop arrangement (layout, taskbar screen, Pi Connect showing
+# both screens) is user-session state, so it is NOT set here: it is
+# installed by MHS35-desktop-setup.sh, run as the desktop user after
+# the reboot below. (An earlier revision installed a kanshi mirror
+# profile from here; mirroring was superseded on hardware — see
+# FIXES.md.)
 
 touch ./.have_installed
 echo "gpio:drm:mhs35:$ROTATE:480:320" > ./.have_installed
 
 sync
 sync
-echo "MHS35 (DRM) installed: panel + HDMI mirrored to one desktop."
+echo "MHS35 (DRM) installed: panel + HDMI are live DRM outputs."
+echo "After the reboot, run as your user:  ./MHS35-desktop-setup.sh"
 echo "After reboot, verify with:  kmsprint   and   ls /sys/class/drm"
 echo "Touch note: if the pointer axes are swapped under Wayland, add"
 echo "  swapxy to the dtoverlay line in $CFG and reboot."

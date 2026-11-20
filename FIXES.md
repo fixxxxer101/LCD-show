@@ -67,21 +67,38 @@ Result: HDMI is DRM output 1, the panel is DRM output 2 (SPI) at
 480×320, labwc presents both, and Pi Connect screen sharing works.
 Plug HDMI in at any time.
 
-**Mirrored by default.** Two DRM outputs with no layout config give
-an *extended* desktop (panel left, HDMI right) — and Pi Connect then
-captures only part of the layout. The legacy design was mirrored
-(one desktop everywhere), so the installer also writes a **kanshi
-profile** (`usr/mhs35-kanshi-mirror.conf` →
-`~/.config/kanshi/config`, existing config backed up): every output
-at position 0,0 in the same 480×320 landscape mode, so the panel,
-HDMI and Pi Connect all show the same complete desktop. kanshi
-matches the first profile whose output count equals the number of
-connected displays, hence one profile per case (panel only, +HDMI-1,
-+HDMI-2, +both). Trade-off: the shared desktop is 480×320, so an
-HDMI monitor shows the panel-resolution image scaled up. Already
-installed and just want the mirror? Run `./MHS35-mirror.sh` as your
-user — no reinstall, no reboot. Delete the kanshi config (or
-restore its `config.bak-*`) to go back to an extended desktop.
+**Desktop arrangement** (installed by `MHS35-desktop-setup.sh`,
+run as the desktop user — it is session state, so the root
+installer does not touch it):
+
+- **Layout — `usr/mhs35-kanshi-layout.conf`:** kanshi profile with
+  HDMI as the main display (1024×768 at 0,0) and the panel as a
+  rotated secondary (its only mode is 320×480 portrait; compositor
+  `transform 90` makes it 480×320 landscape) at 1024,0. kanshi
+  matches the first profile whose output count equals the number
+  of connected displays, hence one profile per case.
+- **Taskbar on the big screen:** `monitor=HDMI-A-1` in
+  `~/.config/wf-panel-pi/wf-panel-pi.ini`. Without it the panel
+  process puts the taskbar — and its menus, which are taller than
+  320px — on the small screen, where they overflow unreadably.
+- **Pi Connect showing both screens:** Connect's wayvnc captures
+  exactly one output, and position changes do not affect its
+  choice. The setup adds a labwc keybind (Super+V) that creates a
+  virtual output `BothScreens`, and installs
+  `usr/mhs35-bothscreens.sh` to `~/.local/bin/` + labwc autostart:
+  every login it recreates the virtual output, sizes it to span
+  the whole layout (1504×768), and points Connect's wayvnc at it
+  via its control socket (`wayvncctl … output-set BothScreens`).
+  Connect then shows both screens side by side and the mouse
+  crosses between them. Bonus: the part of the virtual frame not
+  covered by a physical screen (below the small panel) is extra
+  desktop space visible only through Connect.
+
+An earlier revision mirrored the outputs instead (one 480×320
+desktop everywhere, like the legacy fbcp design). It was built and
+tested, then superseded by the arrangement above at the owner's
+direction; `MHS35-mirror.sh` and `usr/mhs35-kanshi-mirror.conf`
+remain in the repo marked SUPERSEDED for history.
 
 **`system_config.sh`:** the forced `B2` / `W1` lines are removed
 (see the comment there). A display installer should not silently
@@ -96,6 +113,8 @@ listed above as part of installing:
 git clone https://github.com/fixxxxer101/LCD-show.git
 cd LCD-show
 sudo ./MHS35-DRM-show
+# after the reboot, as your normal user:
+./MHS35-desktop-setup.sh
 ```
 
 ## Verify after reboot
@@ -109,9 +128,37 @@ rpi-connect status       # screen sharing available
 
 ## Hardware test log
 
-- 2026-11-19 (Clint's Pi): DRM installer verified working — panel +
-  HDMI live, Pi Connect screen sharing back. Default layout was
-  extended (left/right); mirrored profile added in response.
+Hardware: Pi 5, user `pi5`, ViewSonic NX2232w on HDMI-A-1
+(preferred mode 1024×768). All entries 2026-11-19, Clint's Pi.
+
+- DRM installer verified working — panel + HDMI live, Pi Connect
+  screen sharing back. Default layout was extended (panel left,
+  HDMI right) and Connect captured only the panel's slice.
+- Panel facts learned from `wlr-randr`: output name `SPI-1`, single
+  mode 320×480 (portrait) — the landscape picture comes from the
+  compositor transform, and any config asking the panel itself for
+  480x320 silently fails. Touch already maps to SPI-1 in labwc
+  rc.xml (`mapToOutput="SPI-1"`, set by the OS).
+- Mirror attempt: kanshi profile asking SPI-1 for mode 480x320
+  never matched/applied (see above). A live overlap at matching
+  logical size (HDMI 720x480 @ scale 1.5) did mirror, but the owner
+  rejected panel-resolution on the big monitor; custom HDMI modes
+  1440x960 / 960x640 were rejected by the monitor ("out of range")
+  or unwanted. Mirroring abandoned by owner decision.
+- Final arrangement verified live, in order: panel rotated
+  (transform 90); HDMI made main (position 0,0, panel at 1024,0);
+  Connect capture switched with `wayvncctl output-set` (its
+  control socket is `$XDG_RUNTIME_DIR/rpi-connect-wayvnc-ctl.sock`;
+  `output-list` shows the captured output with `*`); taskbar moved
+  to the big screen via wf-panel-pi `monitor=HDMI-A-1` (menus had
+  been opening on the 320px-tall panel and overflowing);
+  `BothScreens` virtual output created by labwc keybind, sized
+  1504x768 at 0,0, Connect pointed at it — owner confirms Connect
+  shows both screens side by side, mouse crosses, and the
+  virtual-only area below the panel works as extra space.
+- Persistence (layout via kanshi, virtual output + capture choice
+  via login script) is packaged in `MHS35-desktop-setup.sh`;
+  reboot verification is the one step still outstanding.
 
 ## Still to confirm on real hardware
 
