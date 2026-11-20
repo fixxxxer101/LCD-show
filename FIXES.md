@@ -156,9 +156,17 @@ Hardware: Pi 5, user `pi5`, ViewSonic NX2232w on HDMI-A-1
   1504x768 at 0,0, Connect pointed at it — owner confirms Connect
   shows both screens side by side, mouse crosses, and the
   virtual-only area below the panel works as extra space.
-- Persistence (layout via kanshi, virtual output + capture choice
-  via login script) is packaged in `MHS35-desktop-setup.sh`;
-  reboot verification is the one step still outstanding.
+- Persistence packaged in `MHS35-desktop-setup.sh` + `update.sh`.
+  First reboot test found two bugs, both fixed and re-verified:
+  wtype missing from the default install (setup now installs it;
+  login script logs every run to
+  `~/.local/state/mhs35-bothscreens.log`), and the compositor
+  re-flowing the panel to 1504,0 when the virtual output is
+  resized (login script now re-asserts positions and verifies).
+- Final cold-boot verification PASSED 2026-11-19: after reboot,
+  with no manual steps, the layout, taskbar, virtual output and
+  Pi Connect showing both screens all came back on their own.
+  Owner's verdict: "perfect".
 
 ## Still to confirm on real hardware
 
