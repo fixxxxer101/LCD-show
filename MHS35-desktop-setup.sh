@@ -74,6 +74,17 @@ else
 fi
 killall -SIGHUP labwc 2>/dev/null || true
 
+# --- dependency: wtype (triggers the virtual output) ---
+# Learned on hardware 2026-11-19: wtype is NOT in the default
+# install, and without it the login script cannot create the
+# virtual output. Install it here so a fresh setup just works.
+if ! command -v wtype >/dev/null 2>&1; then
+  echo "installing wtype (needed to auto-create the virtual screen)..."
+  sudo apt-get install -y wtype \
+    || echo "WARNING: wtype install failed — virtual screen will" \
+            "not auto-create until 'sudo apt install -y wtype' succeeds"
+fi
+
 # --- login script + autostart ---
 mkdir -p "$HOME/.local/bin"
 cp -f ./usr/mhs35-bothscreens.sh "$HOME/.local/bin/"
@@ -90,5 +101,6 @@ fi
 
 # --- apply now, not just at next login ---
 "$HOME/.local/bin/mhs35-bothscreens.sh"
-echo "done. Reboot once to verify everything comes back on its own:"
+echo "done. (login-script log: ~/.local/state/mhs35-bothscreens.log)"
+echo "Reboot once to verify everything comes back on its own:"
 echo "layout, taskbar on the big screen, and Connect showing both."
