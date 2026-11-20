@@ -71,34 +71,46 @@ Plug HDMI in at any time.
 run as the desktop user — it is session state, so the root
 installer does not touch it):
 
-- **Layout — `usr/mhs35-kanshi-layout.conf`:** kanshi profile with
-  HDMI as the main display (1024×768 at 0,0) and the panel as a
-  rotated secondary (its only mode is 320×480 portrait; compositor
-  `transform 90` makes it 480×320 landscape) at 1024,0. kanshi
-  matches the first profile whose output count equals the number
-  of connected displays, hence one profile per case.
-- **Taskbar on the big screen:** `monitor=HDMI-A-1` in
-  `~/.config/wf-panel-pi/wf-panel-pi.ini`. Without it the panel
-  process puts the taskbar — and its menus, which are taller than
-  320px — on the small screen, where they overflow unreadably.
-- **Pi Connect showing both screens:** Connect's wayvnc captures
+- **Layout — `usr/mhs35-layout.sh` (autodetect):** one script
+  computes the layout from whatever is connected when it runs:
+  every HDMI/external output at its own preferred mode, in port
+  order; the panel last, rotated (`transform 90` — its only mode
+  is 320×480 portrait, so it becomes 480×320 landscape) at
+  whatever x the real screens add up to. Positions and sizes are
+  measured, never hardcoded. A watcher
+  (`usr/mhs35-layout-watch.sh`, labwc autostart) runs it at login
+  and whenever the connected displays change. The script only
+  writes settings that differ from the computed layout, so on an
+  already-correct desktop it changes nothing.
+- **Taskbar follows the screens:** the layout script sets
+  wf-panel-pi's `monitor=` to the first external output — or to
+  the panel when there is none, so a panel-only desktop still has
+  its taskbar and menus (which are taller than 320px and overflow
+  the small screen unreadably if they land anywhere else).
+- **Pi Connect showing all screens:** Connect's wayvnc captures
   exactly one output, and position changes do not affect its
-  choice. The setup adds a labwc keybind (Super+V) that creates a
-  virtual output `BothScreens`, and installs
-  `usr/mhs35-bothscreens.sh` to `~/.local/bin/` + labwc autostart:
-  every login it recreates the virtual output, sizes it to span
-  the whole layout (1504×768), and points Connect's wayvnc at it
-  via its control socket (`wayvncctl … output-set BothScreens`).
-  Connect then shows both screens side by side and the mouse
-  crosses between them. Bonus: the part of the virtual frame not
-  covered by a physical screen (below the small panel) is extra
-  desktop space visible only through Connect.
+  choice. A labwc keybind (Super+V) creates a virtual output
+  `BothScreens`; the layout script sizes it to the real bounding
+  box of the layout and points Connect's wayvnc at it via its
+  control socket (`wayvncctl … output-set BothScreens`). Connect
+  then shows every screen side by side and the mouse crosses
+  between them. Bonus: the part of the virtual frame not covered
+  by a physical screen is extra desktop space visible only
+  through Connect.
+- **kanshi is given no profiles, on purpose.** The first version
+  of this arrangement used static kanshi profiles (see the test
+  log); they pinned one desk monitor and white-screened the Pi
+  when it booted without it. The setup installs a comment-only
+  kanshi config so kanshi can never fight the layout script.
 
 An earlier revision mirrored the outputs instead (one 480×320
 desktop everywhere, like the legacy fbcp design). It was built and
 tested, then superseded by the arrangement above at the owner's
 direction; `MHS35-mirror.sh` and `usr/mhs35-kanshi-mirror.conf`
-remain in the repo marked SUPERSEDED for history.
+remain in the repo marked SUPERSEDED for history. The static
+kanshi layout and the fixed-size BothScreens script are likewise
+superseded by the autodetect layout (`usr/mhs35-kanshi-layout.conf`,
+`usr/mhs35-bothscreens.sh`, marked SUPERSEDED).
 
 **`system_config.sh`:** the forced `B2` / `W1` lines are removed
 (see the comment there). A display installer should not silently
@@ -167,6 +179,52 @@ Hardware: Pi 5, user `pi5`, ViewSonic NX2232w on HDMI-A-1
   with no manual steps, the layout, taskbar, virtual output and
   Pi Connect showing both screens all came back on their own.
   Owner's verdict: "perfect".
+- Field report, same evening: booted away from the desk, in a
+  different screen setup, the Pi hangs at a white screen. The
+  current arrangement assumes the desk monitor specifically —
+  the kanshi profile pins HDMI-A-1 at 1024×768, the taskbar is
+  pinned to HDMI-A-1, the virtual frame is hardcoded 1504×768,
+  the panel position is hardcoded 1024,0. That assumption is
+  the bug the next phase removes.
+
+## Autodetect layout (built 2026-11-19, hardware test pending)
+
+The requirements from the field report above are implemented by
+`usr/mhs35-layout.sh` + `usr/mhs35-layout-watch.sh` (design in
+"Desktop arrangement" above):
+
+- **0, 1, or 2 HDMI outputs**, either port, any brand, each at
+  its own preferred mode; positions computed from actual sizes.
+- **The panel always comes up usable.** With no HDMI connected
+  it sits at 0,0 with the taskbar on it — panel-only boot is a
+  normal desktop, never a white screen.
+- **Nothing in the boot path assumes a specific main display
+  exists** — not the layout, not the taskbar target, not the
+  virtual output's size (the real bounding box).
+- Every run is logged (`~/.local/state/mhs35-layout.log`) with
+  explicit FAIL lines; the script always exits 0 so a layout
+  problem can never block the session.
+
+Verified so far by simulation (stubbed `wlr-randr`/`wayvncctl`/
+`wtype` against recorded and synthetic output listings) — all
+8 scenarios pass, including exact call sequences:
+
+- desk setup already correct → zero writes (no churn)
+- desk boot → virtual output created/sized, Connect pointed
+- **panel-only with a stale panel position (the white-screen
+  case) → panel pulled to 0,0, taskbar moved onto it**
+- panel-only already correct → zero writes
+- HDMI on port 2 only, different brand, wrong current mode →
+  preferred mode set, panel and taskbar follow
+- dual HDMI (1080p + 1024×768) → cumulative positions,
+  3424×1080 virtual frame
+- different main screen (1080p TV), stale panel position →
+  panel re-placed at 1920,0
+- HDMI connected but disabled → enabled at its preferred mode
+
+Still to verify on the real Pi (needs a second monitor on the
+desk): the same matrix live, plus mid-session hotplug via the
+watcher.
 
 ## Still to confirm on real hardware
 

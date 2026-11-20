@@ -34,10 +34,15 @@ up — but it quietly breaks two other things:
 - **`usr/mhs35-overlay.dts`** — the overlay as source (upstream
   ships only a binary), with the `drm` override added. The binary
   is rebuilt on the Pi at install time if needed.
-- **`MHS35-desktop-setup.sh`** — one user-side setup that arranges
-  the desktop: HDMI monitor as the main screen with the taskbar,
-  the panel rotated beside it, and a virtual output spanning the
-  whole layout so Pi Connect shows **all** screens at once.
+- **`MHS35-desktop-setup.sh`** — one user-side setup that installs
+  the autodetecting layout: every connected screen (either HDMI
+  port, both, or none — any brand or resolution) at its own
+  preferred mode, the panel rotated beside them, the taskbar on
+  the first big screen (or on the panel when it's the only
+  screen), and a virtual output spanning the real layout so Pi
+  Connect shows **all** screens at once. Nothing assumes a
+  specific monitor exists, so booting away from your usual desk
+  — or with no monitor at all — is a normal, working desktop.
 - **`update.sh`** — after the first install, updating the Pi is a
   single command: `bash update.sh` (pull + setup, nothing else to
   run by hand).
@@ -61,13 +66,14 @@ hardware are best-effort until someone tests them.
 
 ## In progress
 
-- **Dual-HDMI support with full autodetection.** The layout is
-  currently arranged for one HDMI monitor. The next phase replaces
-  the fixed layout with an autodetecting one — both HDMI ports,
-  any monitor brand or resolution, positions computed from the
-  actual screens — because this Pi is used as a portable PC with
-  many different monitor combinations. Not built yet; needs a
-  second monitor on the desk to test against.
+- **Dual-HDMI autodetection — built, in hardware testing.** The
+  fixed one-monitor layout has been replaced by an autodetecting
+  one (both HDMI ports, any monitor brand or resolution,
+  positions computed from the actual screens, panel-only boots
+  included), because this Pi is used as a portable PC with many
+  different monitor combinations. It passes an 8-scenario
+  simulation suite; live testing with a second monitor is the
+  remaining step.
 - After that, this work will be submitted upstream as a pull
   request to goodtft/LCD-show.
 

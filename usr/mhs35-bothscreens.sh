@@ -1,4 +1,10 @@
 #!/bin/sh
+# SUPERSEDED by usr/mhs35-layout.sh (autodetect layout), which
+# also sizes the virtual output — to the real layout instead of
+# this script's hardcoded 1504x768 — and re-asserts positions
+# from measured sizes instead of fixed ones. Kept for history;
+# the desktop setup no longer installs this file.
+#
 # mhs35-bothscreens.sh — make Raspberry Pi Connect show BOTH screens.
 #
 # Pi Connect's screen sharing is wayvnc, and wayvnc captures exactly
