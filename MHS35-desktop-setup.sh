@@ -54,9 +54,10 @@ else
   printf '[panel]\nmonitor=HDMI-A-1\n' > "$PANEL_INI"
 fi
 echo "taskbar pinned to HDMI-A-1 in $PANEL_INI"
-# Restart the panel so the change takes effect now.
-pkill wf-panel-pi 2>/dev/null && sleep 1
-nohup wf-panel-pi >/dev/null 2>&1 &
+# Restart the panel so the change takes effect now. The session
+# supervisor respawns wf-panel-pi when it exits (verified on
+# hardware) — do NOT launch a copy by hand, that gives two panels.
+pkill wf-panel-pi 2>/dev/null || true
 
 # --- Super+V creates the virtual output ---
 RC="$HOME/.config/labwc/rc.xml"
