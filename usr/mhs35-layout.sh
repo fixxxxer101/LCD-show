@@ -9,8 +9,19 @@
 #   * the SPI panel last, rotated (transform 90), at whatever x
 #     the real screens add up to — or at 0,0 when it is the only
 #     screen, so a panel-only boot is a normal, usable desktop
-#   * the taskbar (wf-panel-pi) on the first external output, or
-#     on the panel when no external output exists
+#   * the taskbar (wf-panel-pi) targeted at the first external
+#     output, or at the panel when no external output exists.
+#     The script only records that target in the panel's config —
+#     it NEVER restarts the panel mid-session. Hardware finding
+#     (2026-11-21): a wf-panel-pi process that starts after the
+#     BothScreens virtual output exists cannot draw its bar on an
+#     external screen (its notifications appear there; the bar
+#     itself vanishes), while the login instance — which starts
+#     before the virtual output is created — lands correctly.
+#     So the bar is placed at boot: plug everything in before
+#     booting. A mid-session plug-in still gets its layout and
+#     Pi Connect view adjusted; the bar stays where it booted
+#     until the next reboot.
 #   * the "BothScreens" virtual output sized to the real bounding
 #     box of the layout, with Pi Connect's wayvnc pointed at it
 #
@@ -208,10 +219,16 @@ BBOX_H=$(field "$WORK/plan.txt" BBOX 3)
 TASKBAR=$(field "$WORK/plan.txt" TASKBAR 2)
 
 # --- taskbar ---------------------------------------------------------
-# wf-panel-pi's monitor= names the output the taskbar lives on.
-# It follows the first external output, or the panel when there
-# is none. Only rewritten when the target actually changes (the
-# panel process is supervisor-respawned; never launch it by hand).
+# wf-panel-pi's monitor= names the output the taskbar lives on:
+# the first external output, or the panel when there is none.
+# Only the config is maintained here — the running panel is
+# NEVER killed or restarted by this script. A panel process
+# restarted mid-session (after the virtual output exists) loses
+# its bar entirely when aimed at an external screen (verified on
+# hardware 2026-11-21), so a restart trades a working bar on the
+# "wrong" screen for no bar at all. Keeping the config correct
+# means the next login — whose panel starts before the virtual
+# output is created — places the bar correctly.
 if [ "$PHASE" != "connect" ] && [ -n "$TASKBAR" ]; then
   PANEL_INI="$HOME/.config/wf-panel-pi/wf-panel-pi.ini"
   [ -f "$PANEL_INI" ] || PANEL_INI="$HOME/.config/wf-panel-pi.ini"
@@ -227,8 +244,7 @@ if [ "$PHASE" != "connect" ] && [ -n "$TASKBAR" ]; then
       mkdir -p "$(dirname "$PANEL_INI")"
       printf '[panel]\nmonitor=%s\n' "$TASKBAR" > "$PANEL_INI"
     fi
-    echo "taskbar moved to $TASKBAR"
-    pkill wf-panel-pi 2>/dev/null || true
+    echo "taskbar target set to $TASKBAR (applies at next login)"
   fi
 fi
 
@@ -307,7 +323,7 @@ if grep -q '^APPLY' "$WORK/verify.txt"; then
   echo "FAIL: layout did not converge; still to apply:"
   grep '^APPLY' "$WORK/verify.txt"
 else
-  echo "layout OK: ${BBOX_W}x${BBOX_H}, taskbar on ${TASKBAR:-none}"
+  echo "layout OK: ${BBOX_W}x${BBOX_H}, taskbar target ${TASKBAR:-none}"
 fi
 
 exit 0

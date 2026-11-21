@@ -82,11 +82,21 @@ installer does not touch it):
   and whenever the connected displays change. The script only
   writes settings that differ from the computed layout, so on an
   already-correct desktop it changes nothing.
-- **Taskbar follows the screens:** the layout script sets
-  wf-panel-pi's `monitor=` to the first external output — or to
-  the panel when there is none, so a panel-only desktop still has
-  its taskbar and menus (which are taller than 320px and overflow
-  the small screen unreadably if they land anywhere else).
+- **Taskbar target follows the screens:** the layout script
+  keeps wf-panel-pi's `monitor=` set to the first external
+  output — or to the panel when there is none, so a panel-only
+  desktop still has its taskbar and menus (which are taller than
+  320px and overflow the small screen unreadably if they land
+  anywhere else). The script only maintains the config; it never
+  restarts the panel mid-session, because a wf-panel-pi process
+  that starts after the BothScreens virtual output exists cannot
+  draw its bar on an external screen (hardware finding,
+  2026-11-21 — its notifications appear there, the bar itself
+  vanishes). The login instance starts before the virtual output
+  is created and places the bar correctly, so the bar is placed
+  at boot: plug everything in before booting. A mid-session
+  plug-in still gets its layout and Connect view adjusted; the
+  bar stays where it booted until the next reboot.
 - **Pi Connect showing all screens:** Connect's wayvnc captures
   exactly one output, and position changes do not affect its
   choice. A labwc keybind (Super+V) creates a virtual output
@@ -187,7 +197,7 @@ Hardware: Pi 5, user `pi5`, ViewSonic NX2232w on HDMI-A-1
   the panel position is hardcoded 1024,0. That assumption is
   the bug the next phase removes.
 
-## Autodetect layout (built 2026-11-19, hardware test pending)
+## Autodetect layout (built 2026-11-19, hardware-tested 2026-11-21)
 
 The requirements from the field report above are implemented by
 `usr/mhs35-layout.sh` + `usr/mhs35-layout-watch.sh` (design in
@@ -228,8 +238,41 @@ Verified so far by simulation (stubbed `wlr-randr`/`wayvncctl`/
 - HDMI connected but disabled → enabled at its preferred mode
 
 Still to verify on the real Pi (needs a second monitor on the
-desk): the same matrix live, plus mid-session hotplug via the
-watcher.
+desk): the dual-HDMI case live. The rest of the matrix was run
+on hardware 2026-11-21 — results in the next section.
+
+## Hardware results (2026-11-21)
+
+- **Desk boot: PASS.** Autodetect layout, panel rotation and Pi
+  Connect all correct; the two-phase login made boot visibly
+  faster than the single-phase version.
+- **Panel-only cold boot: PASS.** The white-screen case is dead:
+  with no HDMI connected the panel comes up at 0,0 as a complete
+  desktop, taskbar on the panel, Connect showing the panel.
+- **Mid-session hotplug (panel-only → plug in HDMI): layout and
+  Connect PASS, taskbar move FAIL.** The watcher detected the
+  plug-in within seconds and set the HDMI to its preferred mode
+  at 0,0, moved the panel beside it, and resized the virtual
+  output — but the taskbar did not follow. Investigation found
+  wf-panel-pi (supervised by `lwrespawn`, ~30 s respawn delay,
+  single-instance) cannot draw its bar on an external screen
+  when its process starts after the BothScreens virtual output
+  exists: by name (`monitor=HDMI-A-1`) and by index
+  (`monitor=2`) alike, its notifications render on that screen
+  but the bar itself never appears. Targeting the panel
+  (`monitor=SPI-1`) works in any state. GDK reports all three
+  outputs' make/model as "Unknown"; plug names are exactly
+  `SPI-1` / `BothScreens` / `HDMI-A-1`.
+- **Owner's accepted operating rule:** be fully connected at
+  boot. The layout script therefore no longer restarts the
+  panel at all — it keeps `monitor=` correct so the next login
+  places the bar, and a mid-session plug-in can no longer cost
+  the user their taskbar.
+- **Open cosmetic issue:** in the Connect view, each output
+  shows its own fitted copy of the wallpaper, so the picture
+  appears seamed/clipped where the panel's region starts. The
+  physical screens are correct; only the composite Connect
+  view shows the seam.
 
 ## Still to confirm on real hardware
 
