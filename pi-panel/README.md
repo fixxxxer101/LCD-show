@@ -45,14 +45,16 @@ cd ~/LCD-show-fix && git pull
 bash pi-panel/install.sh
 ```
 
-That installs the app to `~/.local/bin`, adds a desktop launcher, adds
-one line to the labwc autostart (so it starts on boot), and starts it
-immediately. Re-running the installer is safe.
+That installs the app to `~/.local/bin`, puts a **Pi Panel shortcut on
+the desktop** (double-click it any time to launch the dashboard or
+bring it back after closing it), adds one line to the labwc autostart
+(so it starts on boot), and starts it immediately. Re-running the
+installer is safe.
 
 ## Uninstall
 
 ```
-rm ~/.local/bin/pi-panel.py ~/.local/share/applications/pi-panel.desktop
+rm ~/.local/bin/pi-panel.py ~/.local/share/applications/pi-panel.desktop ~/Desktop/pi-panel.desktop
 sed -i '/pi-panel\.py/d' ~/.config/labwc/autostart
 ```
 

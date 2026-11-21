@@ -2,8 +2,9 @@
 # Pi Panel installer: puts the dashboard on the panel at every boot.
 #
 #   - app        -> ~/.local/bin/pi-panel.py
-#   - launcher   -> ~/.local/share/applications/pi-panel.desktop
-#                   (so it can be reopened from the desktop after closing)
+#   - shortcut   -> ~/Desktop/pi-panel.desktop (double-click to launch
+#                   or bring it back after closing it) plus an entry in
+#                   ~/.local/share/applications for the menu
 #   - autostart  -> a line in ~/.config/labwc/autostart
 #   - and starts it right away (no reboot needed the first time)
 #
@@ -12,9 +13,10 @@ set -e
 SRC=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 BIN="$HOME/.local/bin"
 APP_DIR="$HOME/.local/share/applications"
+DESKTOP_DIR="$HOME/Desktop"
 AUTOSTART="$HOME/.config/labwc/autostart"
 
-mkdir -p "$BIN" "$APP_DIR" "$HOME/.config/labwc"
+mkdir -p "$BIN" "$APP_DIR" "$DESKTOP_DIR" "$HOME/.config/labwc"
 
 cp "$SRC/pi-panel.py" "$BIN/pi-panel.py"
 chmod +x "$BIN/pi-panel.py"
@@ -30,7 +32,9 @@ Icon=utilities-system-monitor
 Terminal=false
 Categories=System;Monitor;
 EOF
-echo "installed launcher $APP_DIR/pi-panel.desktop"
+cp "$APP_DIR/pi-panel.desktop" "$DESKTOP_DIR/pi-panel.desktop"
+chmod +x "$APP_DIR/pi-panel.desktop" "$DESKTOP_DIR/pi-panel.desktop"
+echo "installed desktop shortcut $DESKTOP_DIR/pi-panel.desktop"
 
 touch "$AUTOSTART"
 if grep -q 'pi-panel\.py' "$AUTOSTART"; then
