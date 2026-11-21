@@ -204,6 +204,11 @@ The requirements from the field report above are implemented by
 - Every run is logged (`~/.local/state/mhs35-layout.log`) with
   explicit FAIL lines; the script always exits 0 so a layout
   problem can never block the session.
+- Login is two-phase for speed: the watcher runs the screens
+  phase (detection + layout + taskbar) immediately at login,
+  and the connect phase (virtual output + Pi Connect capture)
+  a few seconds later — Connect cannot be used before the Pi
+  has booted anyway, so the screens never wait on it.
 
 Verified so far by simulation (stubbed `wlr-randr`/`wayvncctl`/
 `wtype` against recorded and synthetic output listings) — all

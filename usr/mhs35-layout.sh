@@ -30,15 +30,23 @@
 # lines, never silently. Exit status is always 0 — a layout
 # problem must never block the session.
 #
-# Usage: mhs35-layout.sh [settle-delay-seconds]   (default 2)
+# Usage: mhs35-layout.sh [settle-delay-seconds] [phase]
+#   phase = all (default) | screens | connect
+# "screens" does only the physical layout + taskbar; "connect"
+# does only the virtual output + Pi Connect capture. The watcher
+# runs screens first at login (the desktop is correct as fast as
+# possible) and connect a few seconds later — Pi Connect cannot
+# be used before the Pi has booted anyway, so nothing is gained
+# by making the screens wait for it.
 
 DELAY=${1:-2}
+PHASE=${2:-all}
 STATE_DIR="$HOME/.local/state"
 LOG="$STATE_DIR/mhs35-layout.log"
 WORK="$STATE_DIR/layout-work"
 mkdir -p "$WORK"
 exec >> "$LOG" 2>&1
-echo "--- layout run at $(date) (delay ${DELAY}s) ---"
+echo "--- layout run at $(date) (delay ${DELAY}s, phase $PHASE) ---"
 
 # One run at a time: the watcher, autostart and manual runs can
 # race. A lock older than 120 s is stale (a run never takes that
@@ -188,10 +196,12 @@ field() { # $1 = plan file, $2 = key, $3 = field number
 }
 
 plan > "$WORK/plan.txt"
-apply_plan "$WORK/plan.txt"
-grep '^SKIP' "$WORK/plan.txt" | while read -r _ name; do
-  echo "SKIP: $name reports no usable mode; left as-is"
-done
+if [ "$PHASE" != "connect" ]; then
+  apply_plan "$WORK/plan.txt"
+  grep '^SKIP' "$WORK/plan.txt" | while read -r _ name; do
+    echo "SKIP: $name reports no usable mode; left as-is"
+  done
+fi
 
 BBOX_W=$(field "$WORK/plan.txt" BBOX 2)
 BBOX_H=$(field "$WORK/plan.txt" BBOX 3)
@@ -202,7 +212,7 @@ TASKBAR=$(field "$WORK/plan.txt" TASKBAR 2)
 # It follows the first external output, or the panel when there
 # is none. Only rewritten when the target actually changes (the
 # panel process is supervisor-respawned; never launch it by hand).
-if [ -n "$TASKBAR" ]; then
+if [ "$PHASE" != "connect" ] && [ -n "$TASKBAR" ]; then
   PANEL_INI="$HOME/.config/wf-panel-pi/wf-panel-pi.ini"
   [ -f "$PANEL_INI" ] || PANEL_INI="$HOME/.config/wf-panel-pi.ini"
   CUR=""
@@ -223,6 +233,7 @@ if [ -n "$TASKBAR" ]; then
 fi
 
 # --- virtual output (Pi Connect shows the whole layout) --------------
+if [ "$PHASE" != "screens" ]; then
 VIRT_PRESENT=1
 if grep -q '^VIRTNONE' "$WORK/plan.txt"; then
   VIRT_PRESENT=0
@@ -288,6 +299,7 @@ if [ "$VIRT_PRESENT" -eq 1 ]; then
          "will be set on a later run"
   fi
 fi
+fi # PHASE != screens
 
 # --- verify ----------------------------------------------------------
 plan > "$WORK/verify.txt"
